@@ -1,0 +1,1 @@
+const express=require('express');const router=express.Router();const {protect}=require('../middleware/auth');const c=require('../controllers/mlController');router.post('/train/:datasetId',protect,c.trainModel);router.post('/predict/:modelId',protect,c.predict);router.get('/models',protect,c.getModels);router.get('/models/:modelId',protect,c.getModel);module.exports=router;

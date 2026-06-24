@@ -1,0 +1,53 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: smart-insights-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  python-service:
+    build: ./python-service
+    container_name: smart-insights-python
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - python_models:/app/saved_models
+
+  server:
+    build: ./server
+    container_name: smart-insights-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/smartinsights
+      JWT_SECRET: change_this_to_a_long_random_secret_string
+      PYTHON_SERVICE_URL: http://python-service:8000
+      CLIENT_URL: http://localhost:3000
+    volumes:
+      - server_uploads:/app/uploads
+    depends_on:
+      - mongo
+      - python-service
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: http://localhost:5000/api
+    container_name: smart-insights-client
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+
+volumes:
+  mongo_data:
+  server_uploads:
+  python_models:

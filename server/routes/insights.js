@@ -1,0 +1,1 @@
+const express=require('express');const router=express.Router();const {protect}=require('../middleware/auth');const c=require('../controllers/insightsController');router.post('/generate/:datasetId',protect,c.generateInsights);router.get('/:datasetId',protect,c.getInsights);module.exports=router;

@@ -1,0 +1,1 @@
+const express=require('express');const router=express.Router();const {protect}=require('../middleware/auth');const c=require('../controllers/analysisController');router.post('/process/:datasetId',protect,c.processDataset);router.get('/:datasetId',protect,c.getAnalysis);module.exports=router;

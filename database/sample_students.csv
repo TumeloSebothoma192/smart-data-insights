@@ -1,0 +1,16 @@
+student_id,age,study_hours,attendance,assignments_avg,quiz_avg,final_score,course,passed
+1,20,12,92,78,74,81,Data Science,yes
+2,22,4,63,45,50,49,Java Programming,no
+3,19,15,96,88,90,91,Data Science,yes
+4,21,7,75,60,64,66,Web Development,yes
+5,23,3,55,41,39,44,Java Programming,no
+6,20,10,84,72,70,76,Data Science,yes
+7,24,5,61,52,48,53,Web Development,no
+8,21,14,94,84,82,87,Data Science,yes
+9,22,8,79,66,69,70,Java Programming,yes
+10,19,2,48,35,40,38,Web Development,no
+11,20,11,88,75,77,79,Data Science,yes
+12,23,6,70,58,60,62,Java Programming,yes
+13,22,9,82,69,68,72,Web Development,yes
+14,21,1,41,28,32,35,Java Programming,no
+15,20,13,90,80,83,85,Data Science,yes
