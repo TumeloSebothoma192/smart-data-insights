@@ -124,3 +124,4 @@ The report includes:
 - Exportable text report
 
 See `docs/SDLC.md` for the project SDLC plan and testing checklist.
+# smart-data-insights
