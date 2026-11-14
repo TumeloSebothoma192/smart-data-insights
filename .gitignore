@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+server/uploads/
+python-service/saved_models/

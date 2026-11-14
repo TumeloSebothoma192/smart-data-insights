@@ -11,7 +11,9 @@ def _series_to_float(series):
 
 
 def _build_time_series(df, numeric_cols):
-    date_cols = [c for c in df.columns if 'datetime' in str(df[c].dtype) or 'date' in c.lower() or 'time' in c.lower()]
+    # Only real date columns (clean_dataframe already parsed text dates); numeric columns named
+    # like 'time_spent' must not be read as timestamps.
+    date_cols = [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])]
     if not date_cols or not numeric_cols:
         return None
     date_col = date_cols[0]
