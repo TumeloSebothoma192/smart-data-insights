@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 import numpy as np
 import pandas as pd
-from services.data_loader import load_dataframe, clean_dataframe, get_column_types, safe
+from services.data_loader import UnreadableFile, load_dataframe, clean_dataframe, get_column_types, safe
 
 router = APIRouter()
 
@@ -87,9 +87,9 @@ def _strong_correlation(corr):
 
 
 @router.post('/process')
-async def process_dataset(file: UploadFile = File(...), file_type: str = Form(...)):
+def process_dataset(file: UploadFile = File(...), file_type: str = Form(...)):
     try:
-        df = await load_dataframe(file, file_type)
+        df = load_dataframe(file, file_type)
         original = df.shape
         df = clean_dataframe(df)
         col_types = get_column_types(df)
@@ -135,6 +135,8 @@ async def process_dataset(file: UploadFile = File(...), file_type: str = Form(..
         missing_rate = round(missing_total / total_cells * 100, 2)
         duplicate_rate = round(duplicate_rows / max(len(df), 1) * 100, 2)
         quality_score = max(0, min(100, round(100 - missing_rate * 1.7 - duplicate_rate * 1.1, 1)))
+        if df.shape[0] == 0 or df.shape[1] == 0:
+            quality_score = 0  # nothing to analyse is not 'Excellent'
         strongest = _strong_correlation(corr)
 
         reporter = {
@@ -149,7 +151,9 @@ async def process_dataset(file: UploadFile = File(...), file_type: str = Form(..
             'risk': (
                 f"Missing values affect {missing_rate}% of all cells. Clean or impute them before training a model."
                 if missing_total else
-                (f"There are {duplicate_rows} duplicated records. Remove duplicates before final reporting." if duplicate_rows else "No major data quality risk was detected in the first pass.")
+                (f"There are {duplicate_rows} duplicated records. Remove duplicates before final reporting." if duplicate_rows else
+                 "The file has no data rows left after cleaning (empty, or every cell was blank)." if df.shape[0] == 0 else
+                 "No data quality problem found. This score measures completeness and duplicates only, not what the values mean.")
             ),
             'recommendation': (
                 "Use regression if your target column is numeric, classification if it is a category, or clustering if you only want grouping."
@@ -183,5 +187,7 @@ async def process_dataset(file: UploadFile = File(...), file_type: str = Form(..
             'preview': preview,
             'dtypes': {c: str(dt) for c, dt in df.dtypes.items()}
         }
+    except UnreadableFile as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

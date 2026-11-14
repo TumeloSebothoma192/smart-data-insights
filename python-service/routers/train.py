@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from services.data_loader import clean_dataframe, is_text, load_dataframe
+from services.data_loader import UnreadableFile, clean_dataframe, is_text, load_dataframe
 
 router = APIRouter()
 MODELS_DIR = 'saved_models'
@@ -70,8 +70,11 @@ def prep(df, feats, target=None):
     return X, y, enc, te
 
 
+MAX_TRAIN_ROWS = 20_000
+
+
 @router.post('/train')
-async def train_model(
+def train_model(
     file: UploadFile = File(...),
     file_type: str = Form(...),
     target_column: str = Form(default=''),
@@ -79,7 +82,12 @@ async def train_model(
     feature_columns: str = Form(default=''),
 ):
     try:
-        df = clean_dataframe(await load_dataframe(file, file_type))
+        df = clean_dataframe(load_dataframe(file, file_type))
+        # The free hosting tier has a fraction of one CPU: train on a random sample of large files.
+        total_rows = len(df)
+        sampled = total_rows > MAX_TRAIN_ROWS
+        if sampled:
+            df = df.sample(MAX_TRAIN_ROWS, random_state=42).reset_index(drop=True)
         target = target_column.strip() or None
         problem = detect(df, target, algorithm)
         if target:
@@ -91,6 +99,8 @@ async def train_model(
             target_is_text = is_text(y_raw) or pd.api.types.is_bool_dtype(y_raw)
             if problem == 'regression' and target_is_text:
                 raise HTTPException(status_code=400, detail=f'"{target}" is a category, not a number: use a classification algorithm.')
+            if problem == 'classification' and y_raw.nunique() < 2:
+                raise HTTPException(status_code=400, detail=f'"{target}" has only one value, so there is nothing to classify.')
             if problem == 'classification' and not target_is_text and y_raw.nunique() > 20:
                 raise HTTPException(status_code=400, detail=f'"{target}" has too many distinct numeric values for classification: use a regression algorithm.')
         feats = json.loads(feature_columns) if feature_columns else [c for c in df.columns if c != target]
@@ -142,6 +152,13 @@ async def train_model(
             if hasattr(model, 'feature_importances_'):
                 metrics['feature_importances'] = {feats[i]: round(float(v), 4) for i, v in enumerate(model.feature_importances_)}
 
+        if sampled:
+            metrics['sampled_from_rows'] = total_rows
+        r2 = metrics.get('r2_score')
+        if r2 is not None and r2 < 0.1:
+            metrics['warning'] = 'The model explains almost none of the variation in the target: its predictions are close to guessing the average.'
+        if len(df) < 50:
+            metrics['warning'] = f'Only {len(df)} rows: too few for reliable results.'
         model_id = f'{uuid.uuid4()}.joblib'
         joblib.dump(
             {'model': model, 'scaler': scaler, 'encoders': enc, 'target_encoder': te, 'feature_columns': feats, 'problem_type': problem},
@@ -152,5 +169,7 @@ async def train_model(
                 'target_column': target, 'metrics': metrics, 'model_path': model_id}
     except HTTPException:
         raise
+    except UnreadableFile as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
