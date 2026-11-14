@@ -12,8 +12,9 @@ services:
     build: ./python-service
     container_name: smart-insights-python
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    # Internal only: the Node API is its only client. Publishing 8000 would let anyone call it directly.
+    expose:
+      - "8000"
     volumes:
       - python_models:/app/saved_models
 
@@ -26,7 +27,7 @@ services:
     environment:
       PORT: 5000
       MONGO_URI: mongodb://mongo:27017/smartinsights
-      JWT_SECRET: change_this_to_a_long_random_secret_string
+      JWT_SECRET: ${JWT_SECRET:-change_this_to_a_long_random_secret_string}
       PYTHON_SERVICE_URL: http://python-service:8000
       CLIENT_URL: http://localhost:3000
     volumes:
