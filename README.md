@@ -9,7 +9,7 @@ Upload CSV, Excel, or JSON data, process it with Python, save metadata through N
 ## Stack
 
 - React 18 + Vite + Tailwind CSS + Recharts
-- Node.js + Express + Multer + JWT + MongoDB/Mongoose
+- Node.js + Express + Multer + JWT + PostgreSQL (pg)
 - Python + FastAPI + Pandas + Scikit-learn + Joblib
 - Docker Compose for local running and deployment preparation
 
@@ -26,7 +26,7 @@ Open:
 - Frontend: http://localhost:3000
 - Node API: http://localhost:5000/api/health
 - Python API: http://localhost:8000/health
-- MongoDB: localhost:27017
+- PostgreSQL: internal to compose (tables are created on first start)
 
 ## Run Without Docker
 

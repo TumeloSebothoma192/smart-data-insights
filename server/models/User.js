@@ -1,13 +1,39 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true, minlength: 6 },
-  role: { type: String, enum: ['user','admin'], default: 'user' },
-  preferences: { theme: { type: String, default: 'dark' }, defaultChart: { type: String, default: 'bar' } }
-}, { timestamps: true });
-userSchema.pre('save', async function(next){ if(!this.isModified('password')) return next(); this.password = await bcrypt.hash(this.password, 12); next(); });
-userSchema.methods.comparePassword = function(p){ return bcrypt.compare(p, this.password); };
-userSchema.methods.toJSON = function(){ const obj=this.toObject(); delete obj.password; return obj; };
-module.exports = mongoose.model('User', userSchema);
+const { query } = require('../config/database');
+
+/** Row -> API shape (keeps the `_id` and camelCase fields the React client already uses). */
+function toUser(row) {
+  if (!row) return null;
+  return { _id: row.id, name: row.name, email: row.email, role: row.role, preferences: row.preferences, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+exports.findByEmail = async (email) => {
+  const { rows } = await query('SELECT * FROM users WHERE email = $1', [String(email).trim().toLowerCase()]);
+  return rows[0] || null; // raw row, includes the password hash for login
+};
+
+exports.findById = async (id) => {
+  const { rows } = await query('SELECT * FROM users WHERE id = $1', [id]);
+  return toUser(rows[0]);
+};
+
+exports.create = async ({ name, email, password }) => {
+  const hash = await bcrypt.hash(String(password), 12);
+  const { rows } = await query(
+    'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *',
+    [String(name).trim(), String(email).trim().toLowerCase(), hash],
+  );
+  return toUser(rows[0]);
+};
+
+exports.update = async (id, { name, preferences }) => {
+  const { rows } = await query(
+    `UPDATE users SET name = COALESCE($2, name), preferences = COALESCE($3, preferences), updated_at = now()
+     WHERE id = $1 RETURNING *`,
+    [id, name ? String(name).trim() : null, preferences ? JSON.stringify(preferences) : null],
+  );
+  return toUser(rows[0]);
+};
+
+exports.checkPassword = (row, password) => bcrypt.compare(String(password || ''), row.password);
+exports.toUser = toUser;
