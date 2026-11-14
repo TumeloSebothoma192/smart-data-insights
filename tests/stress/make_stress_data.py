@@ -33,13 +33,17 @@ MERCHANTS = {
 }
 
 
-def statement(months, salary, rent, debt_share, spend_mult, start_balance):
+RISKY = {"Debit Order - Short Term Loan", "Cash Loan Interest Fee"}
+
+
+def statement(months, salary, rent, debt_share, spend_mult, start_balance, risky_loans=True):
     rows, bal, d0 = [], start_balance, date(2025, 1, 1)
     for m in range(months):
         start = d0 + timedelta(days=30 * m)
         txns = [(start + timedelta(days=24), "Salary - Employer", salary),
                 (start, "Rent", -rent)]
-        for name in random.sample(MERCHANTS["debt"], k=max(0, round(debt_share * 6))):
+        lenders = MERCHANTS["debt"] if risky_loans else [m for m in MERCHANTS["debt"] if m not in RISKY]
+        for name in random.sample(lenders, k=min(len(lenders), max(0, round(debt_share * 6)))):
             txns.append((start + timedelta(days=random.randint(0, 5)), name, -round(random.uniform(400, 3200), 2)))
         for cat in ("groceries", "transport", "utilities", "leisure", "health"):
             for _ in range(random.randint(2, 6)):
@@ -53,8 +57,8 @@ def statement(months, salary, rent, debt_share, spend_mult, start_balance):
 
 
 H = ["Date", "Description", "Amount", "Balance"]
-write_csv("statement_low_risk.csv", H, statement(6, 32000, 7500, 0.15, 0.8, 12000))
-write_csv("statement_medium_risk.csv", H, statement(6, 21000, 6500, 0.5, 1.0, 1500))
+write_csv("statement_low_risk.csv", H, statement(6, 32000, 7500, 0.15, 0.8, 15000, risky_loans=False))
+write_csv("statement_medium_risk.csv", H, statement(6, 21000, 6500, 0.5, 0.75, 3000, risky_loans=False))
 write_csv("statement_high_risk.csv", H, statement(6, 18500, 6500, 1.0, 1.3, -1500))
 
 # --- 4. Messy data: everything a real export gets wrong ---
