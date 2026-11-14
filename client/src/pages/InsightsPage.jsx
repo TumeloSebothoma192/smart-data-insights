@@ -57,13 +57,81 @@ function ScoreRing({ score = 0, label = 'Pending' }) {
         </svg>
         <div className="absolute inset-0 grid place-items-center">
           <div>
-            <div className="text-4xl font-black text-white">{score}%</div>
-            <p className="text-[10px] uppercase tracking-[.18em] text-white/35">health</p>
+            <div className="text-2xl font-black text-white">{score}%</div>
+            <p className="text-[10px] uppercase tracking-[.14em] text-white/35">quality</p>
           </div>
         </div>
       </div>
-      <span className="badge mt-4 inline-block">{label}</span>
+      <span className="badge mt-4 inline-block">File: {label}</span>
     </div>
+  );
+}
+
+const money = (v) => (v == null ? '—' : `${v < 0 ? '-' : ''}R${Math.abs(v).toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`);
+const RISK_TONE = {
+  High: 'text-rose-300 border-rose-400/40 bg-rose-500/10',
+  Medium: 'text-amber-300 border-amber-400/40 bg-amber-500/10',
+  Low: 'text-emerald-300 border-emerald-400/40 bg-emerald-500/10',
+};
+const FLAG_DOT = { high: 'bg-rose-400', medium: 'bg-amber-400', low: 'bg-emerald-400' };
+
+function FinancialRisk({ st }) {
+  const tone = RISK_TONE[st.risk_level] || RISK_TONE.Medium;
+  const tiles = [
+    ['Income', money(st.income_total)],
+    ['Spending', money(st.spending_total)],
+    ['Net cash flow', money(st.net_cash_flow)],
+    ['Debt-to-income', st.debt_to_income_pct == null ? '—' : `${Math.round(st.debt_to_income_pct)}%`],
+    ['Lowest balance', money(st.lowest_balance)],
+    ['Days overdrawn', `${Math.round(st.negative_balance_pct)}% of txns`],
+  ];
+  const maxPct = Math.max(1, ...st.spending_by_category.map((c) => c.pct));
+  return (
+    <section className="glass-card p-5 space-y-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-[11px] uppercase tracking-[.25em] text-cyan-300 font-mono">Bank statement detected</p>
+          <h2 className="text-2xl font-black mt-1">Financial risk</h2>
+          <p className="text-sm text-white/45 mt-1">{st.period.start} to {st.period.end} · {st.transactions} transactions</p>
+        </div>
+        <div className={`rounded-2xl border px-5 py-3 text-center ${tone}`}>
+          <div className="text-3xl font-black">{st.risk_level.toUpperCase()}</div>
+          <div className="text-[11px] opacity-80">risk score {st.risk_score}/100</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {tiles.map(([label, value]) => (
+          <div key={label} className="rounded-2xl bg-white/[.035] border border-white/10 p-3">
+            <p className="text-xs text-white/45">{label}</p>
+            <b className="text-lg">{value}</b>
+          </div>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-2 gap-5">
+        <div>
+          <h3 className="font-bold mb-3">Why</h3>
+          <ul className="space-y-2">
+            {st.flags.map((f, i) => (
+              <li key={i} className="flex gap-3 text-sm text-white/70">
+                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${FLAG_DOT[f.level] || FLAG_DOT.medium}`} />
+                <span>{f.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="font-bold mb-3">Where the money goes</h3>
+          <ul className="space-y-2">
+            {st.spending_by_category.slice(0, 7).map((c) => (
+              <li key={c.category} className="text-sm">
+                <div className="flex justify-between text-white/70"><span className="capitalize">{c.category}</span><span>{money(c.amount)} · {Math.round(c.pct)}%</span></div>
+                <div className="h-1.5 rounded-full bg-white/10 mt-1"><div className={`h-1.5 rounded-full ${c.category === 'debt' ? 'bg-rose-400' : 'bg-cyan-300'}`} style={{ width: `${(c.pct / maxPct) * 100}%` }} /></div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -126,7 +194,8 @@ export default function InsightsPage() {
       reporter?.headline || 'Dataset report',
       reporter?.main_finding || '',
       '',
-      `Data health: ${reporter?.quality_score ?? quickStats.data_quality_score ?? '—'}%`,
+      ...(analysis?.statement ? [`Financial risk: ${analysis.statement.risk_level} (${analysis.statement.risk_score}/100)`, ...analysis.statement.flags.map((f) => `  - ${f.text}`)] : []),
+      `Data quality: ${reporter?.quality_score ?? quickStats.data_quality_score ?? '—'}%`,
       `Risk: ${reporter?.risk || '—'}`,
       `ML recommendation: ${reporter?.best_ml_option || '—'}`,
       `Next action: ${reporter?.next_action || '—'}`,
@@ -205,12 +274,14 @@ export default function InsightsPage() {
             </div>
             <div className="grid md:grid-cols-3 gap-3">
               <div className="feedback-tile"><b className="text-amber-300">Risk</b><p>{reporter.risk}</p></div>
-              <div className="feedback-tile"><b className="text-violet-300">Best ML option</b><p>{reporter.best_ml_option}</p></div>
+              <div className="feedback-tile"><b className="text-violet-300">{analysis.statement ? 'Machine learning' : 'Best ML option'}</b><p>{reporter.best_ml_option}</p></div>
               <div className="feedback-tile"><b className="text-emerald-300">Next action</b><p>{reporter.next_action}</p></div>
             </div>
           </div>
         </section>
       )}
+
+      {analysis.statement && <FinancialRisk st={analysis.statement} />}
 
       <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="metric-card"><CheckCircle2 className="w-5 h-5 text-emerald-300" /><div><b className="text-2xl">{analysis.shape?.rows?.toLocaleString()}</b><p className="text-xs text-white/45">Records analyzed</p></div></div>

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 import numpy as np
 import pandas as pd
+from services.statement import detect_and_analyze, reporter_overrides
 from services.data_loader import UnreadableFile, load_dataframe, clean_dataframe, get_column_types, safe
 
 router = APIRouter()
@@ -91,6 +92,7 @@ def process_dataset(file: UploadFile = File(...), file_type: str = Form(...)):
     try:
         df = load_dataframe(file, file_type)
         original = df.shape
+        statement = detect_and_analyze(df)
         df = clean_dataframe(df)
         col_types = get_column_types(df)
         numeric = [c for c, t in col_types.items() if t == 'numeric']
@@ -163,7 +165,11 @@ def process_dataset(file: UploadFile = File(...), file_type: str = Form(...)):
             'next_action': 'Open ML Lab, choose a target column, and train a model after reviewing missing values and outliers.'
         }
 
+        if statement:
+            reporter.update(reporter_overrides(statement))
+
         return {
+            'statement': statement,
             'shape': {'rows': df.shape[0], 'columns': df.shape[1]},
             'original_shape': {'rows': original[0], 'columns': original[1]},
             'columns': df.columns.tolist(),

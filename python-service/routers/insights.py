@@ -29,6 +29,7 @@ async def generate(req: InsightsRequest):
     stats = analysis.get('statistics', {})
     category_metrics = analysis.get('category_metrics', [])
     correlation = analysis.get('correlation', {})
+    st = analysis.get('statement')
 
     summary = [
         f"{req.dataset_name} contains {rows:,} records across {cols} columns.",
@@ -100,6 +101,26 @@ async def generate(req: InsightsRequest):
     if categorical:
         recommendations.append('Use category breakdowns to explain business/user segments in your dashboard presentation.')
 
+    if st:
+        money = lambda v: 'n/a' if v is None else f"R{v:,.0f}"
+        cats = ', '.join(f"{c['category']} {money(c['amount'])} ({c['pct']:.0f}%)" for c in st['spending_by_category'][:4])
+        summary = [
+            f"Financial risk is {st['risk_level'].upper()} (score {st['risk_score']}/100) for {st['period']['start']} to {st['period']['end']}.",
+            f"Income {money(st['income_total'])} vs spending {money(st['spending_total'])}: net {money(st['net_cash_flow'])}.",
+            f"Debt repayments: {money(st['debt_total'])}" + (f" ({st['debt_to_income_pct']:.0f}% of income)." if st['debt_to_income_pct'] is not None else '.'),
+            f"Lowest balance {money(st['lowest_balance'])}; closing balance {money(st['closing_balance'])}.",
+        ]
+        trends = [f"Biggest spending categories: {cats}."] + trends[:1]
+        risks = [f['text'] for f in st['flags']] + [f"Data quality: {reporter.get('quality_score', 0)}% (this measures file completeness, not finances)."]
+        recommendations = [reporter.get('next_action', '')]
+        if (st['debt_to_income_pct'] or 0) > 25:
+            recommendations.append('List every debt with its interest rate; pay the most expensive first and avoid new short-term loans.')
+        if (st['spend_to_income_pct'] or 0) > 100:
+            recommendations.append(f"Close the monthly gap of {money((st['monthly_spending'] or 0) - (st['monthly_income'] or 0))} by cutting the top category first.")
+        if (st['negative_balance_pct'] or 0) > 0:
+            recommendations.append('Avoid overdraft: move debit orders to just after payday so the balance stays positive.')
+        recommendations.append('Machine learning is not needed for a single statement: the rating is rule-based and explained above.')
+
     return {
         'summary': summary,
         'trends': trends or ['No strong trend was detected yet. Add a date/time column or more numeric measures to improve trend analysis.'],
@@ -112,5 +133,6 @@ async def generate(req: InsightsRequest):
             'categorical_features': len(categorical),
             'missing_rate': missing_rate,
             'data_quality_score': reporter.get('quality_score', max(0, round(100 - missing_rate * 2, 1))),
+            'financial_risk': st['risk_level'] if st else None,
         },
     }
