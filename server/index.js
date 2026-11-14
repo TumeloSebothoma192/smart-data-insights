@@ -2,7 +2,9 @@ require('dotenv').config();
 const express=require('express'); const cors=require('cors'); const helmet=require('helmet'); const morgan=require('morgan'); const rateLimit=require('express-rate-limit'); const path=require('path'); const connectDB=require('./config/database');
 const app=express(); const PORT=process.env.PORT||5000; connectDB();
 app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));
-app.use(cors({origin:process.env.CLIENT_URL||'http://localhost:3000',credentials:true}));
+app.set('trust proxy',1); // behind Render's proxy: rate-limit by the real client IP
+const origins=(process.env.CLIENT_URL||'http://localhost:3000').split(',').map(s=>s.trim().replace(/\/$/,''));
+app.use(cors({origin:origins,credentials:true}));
 app.use('/api/', rateLimit({windowMs:15*60*1000,max:300}));
 app.use(express.json({limit:'50mb'})); app.use(express.urlencoded({extended:true,limit:'50mb'})); app.use(morgan('dev'));
 // Uploaded datasets are private: they are only read by the API for their owner, never served statically.

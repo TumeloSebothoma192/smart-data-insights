@@ -1,0 +1,38 @@
+# Render Blueprint: the Node API and the Python ML service (free plan).
+# The React client is deployed separately on Vercel (root directory: client).
+services:
+  - type: web
+    name: smart-insights-ml
+    runtime: docker
+    plan: free
+    rootDir: python-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: INTERNAL_TOKEN
+        generateValue: true
+
+  - type: web
+    name: smart-insights-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_TOKEN
+        fromService:
+          type: web
+          name: smart-insights-ml
+          envVarKey: INTERNAL_TOKEN
+      - key: PYTHON_SERVICE_URL
+        sync: false   # e.g. https://smart-insights-ml.onrender.com
+      - key: MONGO_URI
+        sync: false   # MongoDB Atlas connection string
+      - key: CLIENT_URL
+        sync: false   # the Vercel URL of the React client

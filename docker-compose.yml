@@ -15,6 +15,8 @@ services:
     # Internal only: the Node API is its only client. Publishing 8000 would let anyone call it directly.
     expose:
       - "8000"
+    environment:
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-local-compose-token}
     volumes:
       - python_models:/app/saved_models
 
@@ -31,6 +33,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET first - see README Quick Start}
       NODE_ENV: production
       PYTHON_SERVICE_URL: http://python-service:8000
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-local-compose-token}
       CLIENT_URL: http://localhost:3000
     volumes:
       - server_uploads:/app/uploads
