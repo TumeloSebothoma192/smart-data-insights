@@ -32,7 +32,7 @@ Node.js Express API
       ↓ file handoff / JSON
 Python FastAPI ML Service
       ↓ results
-MongoDB stores users, datasets, analysis, insights, and ML model metadata
+PostgreSQL stores users, datasets, analysis, insights, and ML model metadata
 ```
 
 ## 4. Main Workflow

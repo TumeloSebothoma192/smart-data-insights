@@ -1,12 +1,14 @@
 services:
-  mongo:
-    image: mongo:7
-    container_name: smart-insights-mongo
+  postgres:
+    image: postgres:17-alpine
+    container_name: smart-insights-postgres
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: smartinsights
     volumes:
-      - mongo_data:/data/db
+      - pg_data:/var/lib/postgresql/data
 
   python-service:
     build: ./python-service
@@ -28,17 +30,16 @@ services:
       - "5000:5000"
     environment:
       PORT: 5000
-      MONGO_URI: mongodb://mongo:27017/smartinsights
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/smartinsights
+      PGSSL: disable
       # Required: compose refuses to start without it (a public default would let anyone forge logins).
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET first - see README Quick Start}
       NODE_ENV: production
       PYTHON_SERVICE_URL: http://python-service:8000
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-local-compose-token}
       CLIENT_URL: http://localhost:3000
-    volumes:
-      - server_uploads:/app/uploads
     depends_on:
-      - mongo
+      - postgres
       - python-service
 
   client:
@@ -54,6 +55,5 @@ services:
       - server
 
 volumes:
-  mongo_data:
-  server_uploads:
+  pg_data:
   python_models:

@@ -32,7 +32,7 @@ services:
           envVarKey: INTERNAL_TOKEN
       - key: PYTHON_SERVICE_URL
         sync: false   # e.g. https://smart-insights-ml.onrender.com
-      - key: MONGO_URI
-        sync: false   # MongoDB Atlas connection string
+      - key: DATABASE_URL
+        sync: false   # Neon Postgres connection string
       - key: CLIENT_URL
         sync: false   # the Vercel URL of the React client
