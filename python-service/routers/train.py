@@ -82,6 +82,17 @@ async def train_model(
         df = clean_dataframe(await load_dataframe(file, file_type))
         target = target_column.strip() or None
         problem = detect(df, target, algorithm)
+        if target:
+            # Rows without a target value can't be learned from; don't invent a 'nan' class for them.
+            df = df[df[target].notna()].reset_index(drop=True)
+            if len(df) < 5:
+                raise HTTPException(status_code=400, detail=f'Not enough rows with a value in "{target}" to train on.')
+            y_raw = df[target]
+            target_is_text = is_text(y_raw) or pd.api.types.is_bool_dtype(y_raw)
+            if problem == 'regression' and target_is_text:
+                raise HTTPException(status_code=400, detail=f'"{target}" is a category, not a number: use a classification algorithm.')
+            if problem == 'classification' and not target_is_text and y_raw.nunique() > 20:
+                raise HTTPException(status_code=400, detail=f'"{target}" has too many distinct numeric values for classification: use a regression algorithm.')
         feats = json.loads(feature_columns) if feature_columns else [c for c in df.columns if c != target]
         feats = [c for c in feats if c in df.columns and c != target][:20]
         if not feats:

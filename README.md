@@ -16,6 +16,8 @@ Upload CSV, Excel, or JSON data, process it with Python, save metadata through N
 ## Quick Start with Docker
 
 ```bash
+# A random secret for signing logins (required)
+export JWT_SECRET=$(openssl rand -hex 32)
 docker compose up --build
 ```
 
@@ -97,6 +99,8 @@ After processing a CSV, Excel, or JSON file, the Python service returns dashboar
 Run with:
 
 ```bash
+# A random secret for signing logins (required)
+export JWT_SECRET=$(openssl rand -hex 32)
 docker compose up --build
 ```
 
