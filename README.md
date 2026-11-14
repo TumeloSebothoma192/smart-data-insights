@@ -1,5 +1,7 @@
 # Smart Data Insights Dashboard
 
+**Case study:** [tumelosebothoma.vercel.app/projects/smart-data-insights](https://tumelosebothoma.vercel.app/projects/smart-data-insights) · **Portfolio:** [tumelosebothoma.vercel.app](https://tumelosebothoma.vercel.app)
+
 Portfolio-ready full-stack Data Science and Machine Learning dashboard.
 
 Upload CSV, Excel, or JSON data, process it with Python, save metadata through Node.js, and explore the results in a React dashboard.
@@ -124,5 +126,3 @@ The report includes:
 - Exportable text report
 
 See `docs/SDLC.md` for the project SDLC plan and testing checklist.
-# smart-data-insights
-# smart-data-insights
