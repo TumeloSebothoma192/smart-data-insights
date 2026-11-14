@@ -7,3 +7,5 @@ venv/
 .venv/
 server/uploads/
 python-service/saved_models/
+tests/stress/*.csv
+tests/stress/*.json

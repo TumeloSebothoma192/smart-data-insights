@@ -31,7 +31,7 @@ def _resolve_model(model_path: str) -> str:
 
 
 @router.post('/predict')
-async def predict(req: PredictRequest):
+def predict(req: PredictRequest):
     try:
         b = joblib.load(_resolve_model(req.model_path))
         X = pd.DataFrame({c: [req.input_data.get(c)] for c in req.feature_columns})

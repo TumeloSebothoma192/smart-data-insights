@@ -4,8 +4,11 @@ import numpy as np
 import pandas as pd
 
 
-async def load_dataframe(file, file_type: str) -> pd.DataFrame:
-    content = await file.read()
+class UnreadableFile(ValueError):
+    """The upload isn't valid CSV/Excel/JSON: the caller's fault, so it maps to a 400."""
+
+
+def _parse(content: bytes, file_type: str) -> pd.DataFrame:
     if file_type == 'csv':
         try:
             return pd.read_csv(io.BytesIO(content), encoding='utf-8')
@@ -14,8 +17,24 @@ async def load_dataframe(file, file_type: str) -> pd.DataFrame:
     if file_type == 'excel':
         return pd.read_excel(io.BytesIO(content))
     if file_type == 'json':
-        return pd.read_json(io.BytesIO(content))
-    raise ValueError(f'Unsupported file type: {file_type}')
+        try:
+            return pd.read_json(io.BytesIO(content))
+        except ValueError:
+            # Nested records ([{"a": {"b": 1}}]) need flattening rather than read_json.
+            import json
+            return pd.json_normalize(json.loads(content))
+    raise UnreadableFile(f'Unsupported file type: {file_type}')
+
+
+def load_dataframe(file, file_type: str) -> pd.DataFrame:
+    """Read an UploadFile synchronously (call from a plain `def` endpoint, which runs in a thread)."""
+    content = file.file.read()
+    try:
+        return _parse(content, file_type)
+    except UnreadableFile:
+        raise
+    except Exception as e:
+        raise UnreadableFile(f'Could not read this file as {file_type.upper()}: {e}') from e
 
 
 def is_text(series: pd.Series) -> bool:
